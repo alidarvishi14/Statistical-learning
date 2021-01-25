@@ -1,0 +1,70 @@
+---
+title: "HW3-Q2"
+author: "Alireza Darvishi-96109674"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+
+laoding data
+
+```{r}
+library(ISLR)
+attach(Carseats)
+head(Carseats)
+```
+<font face="Chalkboard">
+a)
+</font>
+```{r}
+linear_model=lm(Carseats,formula = Sales~Price+Urban+US)
+summary(linear_model)
+```
+<font face="Chalkboard">
+b)<br>
+</font>
+
+<font face="Times New Roman">
+price coef: Sales deacreas 0.05 unit with 1 unit increase in price <br>
+USYes coef: diffrence of Sales for two same Carseats one sold in US and one sold out of US and all other variables are same <br>
+UrbanYes coef: diffrence of Sales for two same Carseats one sold in Urban and one sold in rural and all other variables are same <br>
+</font>
+
+<font face="Chalkboard">
+c)<br>
+</font>
+$Sales = \beta_0+\beta_1 Price+\beta_2 UrbanYes +\beta_3 USYes$<br>
+<font face="Chalkboard">
+d)<br>
+</font>
+UrbanYes coef p-value is 0.936 so we can't reject hypothesis $\beta_2=0$<br>
+<font face="Chalkboard">
+e)
+</font>
+```{r}
+linear_model=lm(Carseats,formula = Sales~Price+US)
+summary(linear_model)
+```
+<font face="Chalkboard">
+f)
+</font>
+
+model a adjusted R-squard=0.2335
+
+model e adjusted R-squard=0.2354
+
+<font face="Chalkboard">
+g)
+</font>
+```{r}
+confint(linear_model,level = 0.95)
+```
+<font face="Chalkboard">
+h)
+</font>
+```{r}
+plot(linear_model,which = c(5))
+```
+

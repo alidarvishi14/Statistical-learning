@@ -1,0 +1,79 @@
+---
+title: "HW8_Q10_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# a
+
+## loading data and packages and preprocess
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(readr)
+
+abalone <- read_csv(file = "abalone.data", 
+    col_names = FALSE, col_types = cols(X1 = col_factor(levels = c("M", 
+        "F", "I"))))
+names(abalone)=c("Sex","Length","Diameter","Height","Whole_weight",
+                 "Shucked_weight","Viscera_weight","Shell_weight","Rings")
+X = model.matrix(data = abalone,Rings~.)[,-1]
+y= abalone$Rings
+n= length(y)
+p= dim(X)[2]
+```
+
+
+## pls function
+
+```{r}
+pls = function(X,y,l){
+  n = dim(X)[1]
+  p = dim(X)[2]
+  X = scale(X)
+  y0 = mean(y)*rep(1,n)
+  final_y = matrix(ncol=l,nrow=n)
+  for (m in 1:l){
+    phi = t(X) %*% y
+    z = X %*% phi
+    theta = ( t(z) %*% y ) / norm( z , type = "2")^2
+    y0 = y0 + z %*% theta
+    final_y[,m]=y0
+    X= X - z %*% (t(z) %*% X ) / norm( z , type = "2")^2
+  }
+  return(final_y)
+}
+```
+
+## cv function
+
+```{r}
+crossval = function(X,y,k=10){
+  n = dim(X)[1]
+  error = rep(0,k)
+  data = data.frame(y,X)
+  for (i in 1:k){
+    test = (1+(i-1)*n/k):(i*n/k)
+    model = lm(data = data[-test,] , formula = y~.)
+    y_pred = predict(model,data[test,])
+    error[i]=sum((y_pred-y[test])^2)
+  }
+  return(error)
+}
+```
+## ploting results
+
+```{r}
+k_fold=10
+errors = matrix(ncol = p,nrow = k_fold)
+for (l in 1:p){
+  errors[,l] = crossval(pls(X,y,l),y,k_fold)
+}
+boxplot(errors)
+points(colMeans(errors),pch = 16)
+opt_l = which.min(colMeans(errors))
+points(opt_l,mean(errors[,opt_l]),pch=8,col="red")
+```
+

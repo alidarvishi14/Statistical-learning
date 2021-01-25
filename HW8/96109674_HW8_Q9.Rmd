@@ -1,0 +1,67 @@
+---
+title: "HW8_Q9_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# 9
+
+## loading data and packages
+```{r message=FALSE, warning=FALSE}
+set.seed(100)
+library(ISLR)
+library(glmnet)
+```
+
+## a
+
+```{r}
+train = sample(1:nrow(College), nrow(College)/2)
+test=(-train)
+```
+## b
+
+```{r}
+l.model = lm(College,formula = Apps~.,subset = train)
+test.predict = predict(l.model , newdata = College[-train,])
+mean((test.predict - College[-train,"Apps"])^2)
+```
+## c
+
+```{r}
+x=model.matrix(Apps~.,College)[,-1]
+y=College$Apps
+y.test=y[test]
+grid=10^seq(10,-2,length=100)
+ridge.mod=glmnet(x[train,] , y[train] , alpha=0 , lambda=grid , thresh = 1e-12)
+cv.out=cv.glmnet(x[train ,],y[train],alpha=0)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+print(bestlam)
+
+ridge.pred=predict(ridge.mod,s=bestlam ,newx=x[test,])
+print(paste0("test error is:",mean((ridge.pred-y.test)^2)))
+
+out=glmnet(x,y,alpha=0,lambda=grid)
+predict(out,type="coefficients",s=bestlam)[,1]
+```
+## d
+
+```{r}
+lasso.mod=glmnet(x[train,] , y[train] , alpha=1 , lambda=grid , thresh = 1e-12)
+cv.out=cv.glmnet(x[train ,],y[train],alpha=1)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+bestlam
+
+lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
+print(paste0("test error is:",mean((lasso.pred-y.test)^2)))
+
+out=glmnet(x,y,alpha=1)
+predict(out,type="coefficients",s=bestlam)
+print(paste0("number of nonzero coefs",sum(predict(out,type="coefficients",s=bestlam)[,1]!=0)))
+```
+

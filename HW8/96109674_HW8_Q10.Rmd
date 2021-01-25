@@ -1,0 +1,90 @@
+---
+title: "HW8_Q10_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# 10
+
+## loading data and packages
+```{r message=FALSE, warning=FALSE}
+set.seed(100)
+library(leaps)
+```
+
+## a
+
+```{r}
+set.seed(100)
+p = 20
+n = 1000
+X = matrix(rnorm(n =p*n ,mean = 20*1:20-210 , sd=50 ),ncol = p , nrow = n,byrow = TRUE)
+eps = rnorm(n , mean = 5)
+beta = c(0,rep(floor(runif(n = 9,min=-3,max=1)),2),0)
+y = X %*% beta+eps
+data = data.frame(y=y,X)
+```
+## b
+
+```{r}
+train = sample(length(y),size = 0.9*length(y))
+test = (-train)
+y.train = y[train]
+y.test = y[test]
+x.train = X[train,]
+x.test = model.matrix(y~. , data[test,])
+xnames = colnames(x.test)
+```
+## c
+
+```{r}
+full.model =regsubsets(y~.,data[train,],nvmax = 20)
+sum.model = summary(full.model)
+plot(sum.model$rss,type = "l",xlab = "number of features", ylab="training rss")
+```
+## d
+
+```{r}
+test.errors = rep(0 , 20)
+for (i in 1:20){
+  coefi=coef(full.model,i)
+  y.pred = x.test[,names(coefi)] %*% coefi
+  test.errors[i] = mean(( y.test -y.pred)^2)
+}
+plot(test.errors,type = "l",xlab = "number of features", ylab="test rss")
+```
+## e
+
+```{r}
+plot(test.errors,type = "l",xlab = "number of features", ylab="test rss")
+testmin=which.min(test.errors)
+points(testmin,test.errors[testmin], col="red",cex=2,pch=20)
+print(testmin)
+```
+## f
+
+```{r}
+coef(full.model,testmin)
+beta
+```
+## g
+
+```{r}
+realcoef=c(5,beta)
+names(realcoef)=xnames
+beta_error = rep(0,20)
+for (i in 1:20){
+  coefi = rep(0,21)
+  names(coefi) = xnames
+  coefii = coef(full.model,i)
+  coefi[names(coefii)]=coefii
+  beta_error[i] = ( sum ( (realcoef-coefi) ^ 2 ) )^0.5
+}
+plot(beta_error,type="l")
+which.min(beta_error)
+```
+
+

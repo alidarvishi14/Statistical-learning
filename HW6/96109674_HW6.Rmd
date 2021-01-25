@@ -1,0 +1,177 @@
+---
+title: "HW6_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# loading data and packages
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(class)
+library(readr)
+set.seed(100)
+admission <- read.csv("admission.csv")
+admission$admit = as.factor(admission$admit)
+```
+
+# 1
+
+```{r}
+train_ind <- sample(1:nrow(admission),
+                    size = 0.8 * nrow(admission),
+                    replace = FALSE)
+train <- admission[train_ind,]
+test <- admission[-train_ind,]
+```
+
+# 2
+
+```{r message=FALSE, warning=FALSE}
+summary(train)
+ggplot(train) + geom_bar(aes(x = rank))
+ggplot(train) + geom_histogram(aes(x = gpa))
+ggplot(train) + geom_bar(aes(x = gre))
+ggplot(train) + geom_bar(aes(x = admit))
+ggplot(train) + geom_point(aes(
+  x = gpa,
+  y = gre,
+  color = admit,
+  size = rank
+))
+cor(as.numeric(train$admit) , train[2:4])
+```
+
+# 3
+
+```{r message=FALSE, warning=FALSE}
+library(class)
+train.x = train[, -1]
+test.x = test[, -1]
+train.y =  train[, 1]
+test.y = test[, 1]
+knn.pred = knn(
+  train = train.x ,
+  test = test.x ,
+  cl = train.y ,
+  k = 1
+)
+table(knn.pred, test.y)
+print(paste(
+  "test accuracy for k=1 is:",
+  100 * sum(knn.pred == test.y) / (length(test.y)),
+  "%"
+))
+accuracy = rep(0, 15)
+for (k in 1:15) {
+  knn.pred = knn(
+    train = train.x ,
+    test = test.x ,
+    cl = train.y ,
+    k = k
+  )
+  accuracy[k] = 100 * sum(knn.pred == test[, 1]) / (length(test[, 1]))
+  print(paste(
+    "test accuracy for k=",
+    k,
+    " is:",
+    100 * sum(knn.pred == test.y) / (length(test.y)),
+    "%"
+  ))
+}
+plot(1:15, accuracy, type = "l", xlab = "k")
+k = which.max(accuracy)
+knn.pred = knn(
+  train = train.x ,
+  test = test.x ,
+  cl = train.y ,
+  k = k
+)
+print(paste(
+  "test True Positives for k=",
+  k,
+  " is:",
+  sum(knn.pred == 1 & knn.pred == test.y)
+))
+print(paste(
+  "test True Negatives for k=",
+  k,
+  " is:",
+  sum(knn.pred == 0 & knn.pred == test.y)
+))
+print(paste(
+  "test False Positives for k=",
+  k,
+  " is:",
+  sum(knn.pred == 1 & knn.pred != test.y)
+))
+print(paste(
+  "test False Negatives for k=",
+  k,
+  " is:",
+  sum(knn.pred == 0 & knn.pred != test.y)
+))
+table(knn.pred, test.y)
+print(paste(
+  "test Precision for k=",
+  k,
+  " is:",
+  100 * sum(knn.pred == 1 &
+              knn.pred == test.y) / sum(knn.pred == 1) ,
+  "%"
+))
+print(paste(
+  "test Recall for k=",
+  k,
+  " is:",
+  100 * sum(knn.pred == 1 & knn.pred == test.y) / sum(test.y == 1),
+  "%"
+))
+```
+We have to use Precision and Recall when data label is skewed. using accuracy as goal function in such datasets can make model to predict negative for all test points and get a biased result.
+For example if 1% of data is 1, a model that always predicts 0 has 99% accuracy but 0 recall and precission and it's not usefull.
+
+```{r}
+train.x$gre = 340 / 800 * train.x$gre
+test.x$gre = 340 / 800 * test$gre
+knn.pred = knn(
+  train = train.x ,
+  test = test.x ,
+  cl = train.y ,
+  k = k
+)
+table(knn.pred, test.y)
+```
+Almost no change in model result. It's because all of model prediction comes from gre in both models. Variance in gre is much more than variance in gpa and rank so when calculating k-nearest neighbours, model is actualy calculating k-nearest gre data points. We have to scale data to zero mean and same variance for better results.
+
+# 4
+
+```{r}
+train.x = train[, -1]
+test.x = test[, -1]
+model = glm(data = train, admit ~ ., family = "binomial")
+summary(model)
+pred = predict(model , test.x, type = "response")
+accuracy = rep(0, 9)
+for (i in 1:9) {
+  accuracy[i] = sum(as.numeric(pred >= i / 10) == test.y) / (length(test.y))
+  print(paste0("accuracy for treshhold = ", i / 10, " is: ", 100 * accuracy[i], "%"))
+}
+plot(accuracy, type = "l", xlab = "treshhold")
+treshhold = which.max(accuracy) / 10
+print(paste0(
+  "best accuracy is for treshhold = ",
+  treshhold,
+  " , accuracy:",
+  accuracy[10 * treshhold],
+  "%"
+))
+model2 = glm(data = train, admit ~ rank , family = "binomial")
+pred2 = predict(model2 , test.x, type = "response")
+accuracy2 = sum(as.numeric(pred2 >= treshhold) == test.y) / (length(test.y))
+print(paste0("accuracy of one vaiarble model is ", accuracy[10 * treshhold], "%"))
+```
+No change in accuracy. So all of model prediction comes from rank predictor.

@@ -1,0 +1,65 @@
+---
+title: "HW3-Q4"
+author: "Alireza Darvishi-96109674"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+<font face="Chalkboard">
+a)
+</font>
+
+<font face="Times New Roman">
+loading data and libreries
+</font>
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(readr)
+library(MASS)
+abalone <- read_csv(file = "../abalone.data", 
+    col_names = FALSE, col_types = cols(X1 = col_factor(levels = c("M", 
+        "F", "I"))))
+names(abalone)=c("Sex","Length","Diameter","Height","Whole_weight",
+                 "Shucked_weight","Viscera_weight","Shell_weight","Rings")
+```
+<font face="Chalkboard">
+b)
+</font>
+
+<font face="Times New Roman">
+remove sex column
+</font>
+```{r}
+abalone[,-c(1)] -> abalone
+```
+
+<font face="Chalkboard">
+c)
+</font>
+
+<font face="Times New Roman">
+best fit
+</font>
+```{r}
+fit <- lm(data = abalone , Rings~.^2+
+            log(Length)+
+            log(Diameter)+
+            log(Whole_weight)+
+            log(Shucked_weight)+
+            log(Viscera_weight)+
+            log(Shell_weight)+
+            exp(Length)+
+            exp(Diameter)+
+            exp(Height)+
+            exp(Whole_weight)+
+            exp(Shucked_weight)+
+            exp(Viscera_weight)+
+            exp(Shell_weight)-.)
+step <- stepAIC(fit, direction="both")
+summary(fit)
+summary(step)
+```
+

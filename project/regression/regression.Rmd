@@ -1,0 +1,121 @@
+---
+title: "Regression"
+subtitle: "regression"
+author: "Alireza Darvishi"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+
+
+# Loading data and packages
+```{r loading data and packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readr)
+library(pls)
+library(glmnet)
+data <- read_table2("auto-mpg.data", col_names = FALSE ,col_types = cols(X4 = col_double()))
+data[,9:11][is.na(data[,9:11])]=''
+data %>% mutate(X12 = paste(X9,X10,X11)) %>% .[-c(9:11)] -> data
+names(data) = c("mpg","cylinders","displacement","horsepower","weight","acceleration","model_year","origin","car name")
+head(data)
+```
+# Data description
+This dataset was taken from the StatLib library which is maintained at Carnegie Mellon University. The dataset was used in the 1983 American Statistical Association Exposition.
+
+    Variables:
+    
+    1. mpg:           continuous
+    
+    2. cylinders:     multi-valued discrete
+    
+    3. displacement:  continuous
+    
+    4. horsepower:    continuous
+    
+    5. weight:        continuous
+    
+    6. acceleration:  continuous
+    
+    7. model year:    multi-valued discrete
+    
+    8. origin:        multi-valued discrete
+    
+    9. car name:      string (unique for each instance)
+
+## Preprocess and data summary
+
+```{r preprocces and data summary}
+data = na.omit(data)
+data = data[,-9]
+data$origin = as.factor(data$origin)
+summary(data)
+```
+# Visualization
+
+```{r visualization, warning=FALSE}
+ggplot(data) + geom_histogram( aes(x=mpg, fill=as.factor(cylinders)),bins = 30)
+ggplot(data) + geom_histogram( aes(x=acceleration,fill=as.factor(cylinders)),bins = 30)
+ggplot(data) +geom_point(aes(x = horsepower , y = mpg , color = cylinders))
+ggplot(data) + geom_boxplot(aes(x = origin , y = mpg))
+ggplot(data) + geom_point(aes(x=displacement , y = acceleration , color = weight))
+```
+
+# Data manipulation
+
+As we can see, correlation between predictors is near 1 in some cases. There are many predictors so we use PCR for dimenstion reduction in this section.
+## PCR model
+```{r correlation}
+cor(data[,-c(1,8)])
+train_idx = sample(c(TRUE,FALSE),nrow(data),rep=TRUE)
+test_idx = !train_idx
+x = model.matrix(data = data[train_idx,],mpg~.)[,-1]
+y = data$mpg[train_idx]
+x.test = model.matrix(data = data[test_idx,],mpg~.)[,-1]
+y.test = data$mpg[test_idx]
+pcr.fit=pcr(mpg~., data=data ,scale=TRUE, validation ="CV",subset = train_idx)
+pcr.fit$ncomp
+validationplot(pcr.fit,val.type="MSEP")
+summary(pcr.fit)
+pcr.pred=predict(pcr.fit,data[test_idx,],ncomp=8)
+mean((pcr.pred-y.test)^2)
+```
+
+After using PCR we can see the best model use all 8 predictors and has a result just like simple linear regression!
+
+# Model selection
+First model to test after PCR is Lasso
+
+## Lasso:
+```{r LR with Lasso, warning=FALSE}
+cv.out=cv.glmnet(x,y,alpha=1)
+plot(cv.out)
+lasso.fit <- glmnet(x, y, alpha = 1, lambda = cv.out$lambda.min)
+lasso.pred = predict(lasso.fit ,newx=x.test)
+mean((lasso.pred-y.test)^2)
+```
+## Ridge regression:
+```{r LR with Ridge, warning=FALSE}
+cv.out=cv.glmnet(x,y,alpha=0)
+plot(cv.out)
+ridge.fit <- glmnet(x, y, alpha = 0, lambda = cv.out$lambda.min)
+ridge.pred = predict(ridge.fit ,newx=x.test)
+mean((ridge.pred-y.test)^2)
+```
+# Final results
+Comparing result of these models, simple linear model is slightly better than other models.
+
+Final Coefs are reported below:
+```{r}
+lm.fit = lm(y~x)
+coef(lm.fit)
+plot(lm.fit)
+```
+
+In plot of residuals vs fitted value we see variance is somehow a function of fitted value and it can violate linear model but the diffrence can be neglected.
+
+
+
+

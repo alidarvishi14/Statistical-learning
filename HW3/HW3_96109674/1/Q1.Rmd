@@ -1,0 +1,71 @@
+---
+title: "HW3-Q1"
+author: "Alireza Darvishi-96109674"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+
+<p align="right">
+لود کردن داده های خانه
+</p>
+
+
+```{r message=FALSE, warning=FALSE}
+set.seed(100)
+library(ggplot2)
+library(dplyr)
+library(readr)
+houses <- read_csv("../houses.csv")
+houses$frameType=as.factor(houses$frameType)
+houses$usingType=as.factor(houses$usingType)
+summary(houses)
+```
+
+<p align="right">
+حذف داده های پرت
+</p>
+
+```{r}
+houses %>% filter(age<70 & area<600 ) -> houses
+```
+
+<p align="right">
+بنظرم مساحت خانه برای پیشبینی قیمت هر متر مربع خانه متغیر خوبی است
+چون خانه های بزرگتر معمولا قیمت بر واحد سطح بیشتری دارند
+</p>
+
+```{r}
+ggplot(houses,aes(x=area,y=price))+geom_point()+geom_smooth(method = "lm")
+```
+```{r}
+linear_model=lm(data=houses,formula = price~area)
+summary(linear_model)
+```
+
+
+```{r}
+plot(linear_model,which = c(1))
+```
+<p align="right">
+همانطور که دیده میشود، ضرایب معنی دار هستند اما مدل خطی نیست
+</p>
+```{r}
+residual_lm=lm(formula = linear_model$residuals~houses$age)
+summary(residual_lm)
+```
+```{r}
+residual_squar=data.frame(rsqr=I(linear_model$residuals^2),area=houses$area)
+ggplot(data=residual_squar,aes(x=log(area),y=rsqr))+geom_point()+geom_smooth(method="lm")
+```
+```{r}
+rsqr_lm=lm(data = residual_squar,formula = rsqr~log(area))
+summary(rsqr_lm)
+```
+<p align="right">
+وقتی مساحت زیاد میشود، واریانس قیمت ها هم افزاش می یابد
+بنظر می آید که ناهمسانی واریانس وجود دارد و فرض ثابت بودن واریانس اشتباه است
+</p>
+

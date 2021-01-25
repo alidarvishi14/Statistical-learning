@@ -1,0 +1,43 @@
+---
+title: "HW8_Q10_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# b
+
+## loading data and packages and preprocess
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(readr)
+library(stats)
+
+abalone <- read_csv(file = "abalone.data", 
+    col_names = FALSE, col_types = cols(X1 = col_factor(levels = c("M", 
+        "F", "I"))))
+names(abalone)=c("Sex","Length","Diameter","Height","Whole_weight",
+                 "Shucked_weight","Viscera_weight","Shell_weight","Rings")
+y=abalone$Sex
+X = model.matrix(data = abalone[,-1],Rings~.)[,-1]
+abalone = scale(abalone[,-1])
+n=dim(X)[1]
+```
+
+
+## prcomp
+
+```{r}
+pca = prcomp(X)
+phi = pca$rotation[,1:2]
+processed_data = data.frame(Sex = y, X%*%phi)
+```
+
+## visualization
+
+```{r}
+ggplot(processed_data)+geom_point(aes(x=PC1,y=PC2,color=Sex))
+```
+

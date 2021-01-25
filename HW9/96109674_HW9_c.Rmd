@@ -1,0 +1,67 @@
+---
+title: "HW8_Q10_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# c
+
+## loading data and packages and preprocess
+```{r}
+library(ggplot2)
+library(readr)
+library(boot)
+library(glmnet)
+
+abalone <- read_csv(file = "abalone.data", 
+    col_names = FALSE, col_types = cols(X1 = col_factor(levels = c("M", 
+        "F", "I"))))
+names(abalone)=c("Sex","Length","Diameter","Height","Whole_weight",
+                 "Shucked_weight","Viscera_weight","Shell_weight","Rings")
+
+X = model.matrix(data = abalone,Rings~.)[,-1]
+y= abalone$Rings
+abalone = data.frame(Rings=y,X)
+n= length(y)
+p= dim(X)[2]
+```
+
+
+## declaring lasso and ridge function
+
+```{r}
+lasso_model = function(data,index,...){
+  X=model.matrix(Rings~.,data)[,-1]
+  y=data$Rings
+  gnmodel = glmnet(X[index,],y[index],alpha = 1)
+  y_predict = predict(gnmodel,s=..., newx = X[index,])
+  
+  return(mean((c(y_predict)-c(y[index]))^2))
+}
+
+ridge_model = function(data,index,...){
+  X=model.matrix(Rings~.,data)[,-1]
+  y=data$Rings
+  gnmodel = glmnet(X[index,],y[index],alpha = 0)
+  y_predict = predict(gnmodel,s=..., newx = X[index,])
+  
+  return(mean((c(y_predict)-c(y[index]))^2))
+}
+```
+
+## bootstrap
+
+```{r}
+grid = 10^(1:10-2)
+errors=c()
+for (i in 1:length(grid)){
+  errors[i]=(boot(data = abalone,statistic = lasso_model , R=100, lam = grid[i])$t0)
+}
+plot(errors)
+boot(data = abalone,statistic = lasso_model , R=10, lam = 1,sim = "antithetic")
+```
+
+

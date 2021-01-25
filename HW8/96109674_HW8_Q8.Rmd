@@ -1,0 +1,155 @@
+---
+title: "HW8_Q8_Statistical learning"
+author: "Alireza Darvishi 96109674"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+# 8
+
+## loading data and packages
+```{r message=FALSE, warning=FALSE}
+set.seed(100)
+library(leaps)
+library(glmnet)
+```
+
+## a
+
+```{r}
+n=100
+x=2*(1:n)-n/2
+eps = rnorm(n,sd = n/2)
+```
+## b
+
+```{r}
+y = 100 - 150*x + 4*x^2 + 0.02*x^3 + eps
+data = data.frame(y)
+for (i in 1:10){
+  data=cbind(data,x^i)
+}
+names(data)=append("y",lapply(1:10, function(i){
+  i
+}))
+head(data)
+coef(lm(data,formula = y~.))
+```
+## c
+
+```{r}
+full.model =regsubsets(y~.,data,nvmax = 10)
+full.summary=summary(full.model)
+plot(full.model,scale= "bic")
+plot(full.summary$bic,type = "l",xlab = "features",ylab="BIC")
+points(which.min(full.summary$bic), full.summary$bic[which.min(full.summary$bic)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "adjr2")
+plot(full.summary$adjr2,type = "l",xlab = "features",ylab="adjusted R2")
+points(which.max(full.summary$adjr2), full.summary$adjr2[which.max(full.summary$adjr2)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "Cp")
+plot(full.summary$cp,type = "l",xlab = "features",ylab="Cp")
+points(which.min(full.summary$cp), full.summary$cp[which.min(full.summary$cp)] , col="red",cex=2,pch=20 )
+coef(full.model,which.min(full.summary$cp))
+```
+## d
+### d_backward
+
+```{r}
+full.model =regsubsets(y~.,data,nvmax = 10,method = "backward")
+full.summary=summary(full.model)
+plot(full.model,scale= "bic")
+plot(full.summary$bic,type = "l",xlab = "features",ylab="BIC")
+points(which.min(full.summary$bic), full.summary$bic[which.min(full.summary$bic)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "adjr2")
+plot(full.summary$adjr2,type = "l",xlab = "features",ylab="adjusted R2")
+points(which.max(full.summary$adjr2), full.summary$adjr2[which.max(full.summary$adjr2)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "Cp")
+plot(full.summary$cp,type = "l",xlab = "features",ylab="Cp")
+points(which.min(full.summary$cp), full.summary$cp[which.min(full.summary$cp)] , col="red",cex=2,pch=20 )
+coef(full.model,which.min(full.summary$cp))
+```
+### d_forward
+
+```{r}
+full.model =regsubsets(y~.,data,nvmax = 10,method = "forward")
+full.summary=summary(full.model)
+plot(full.model,scale= "bic")
+plot(full.summary$bic,type = "l",xlab = "features",ylab="BIC")
+points(which.min(full.summary$bic), full.summary$bic[which.min(full.summary$bic)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "adjr2")
+plot(full.summary$adjr2,type = "l",xlab = "features",ylab="adjusted R2")
+points(which.max(full.summary$adjr2), full.summary$adjr2[which.max(full.summary$adjr2)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "Cp")
+plot(full.summary$cp,type = "l",xlab = "features",ylab="Cp")
+points(which.min(full.summary$cp), full.summary$cp[which.min(full.summary$cp)] , col="red",cex=2,pch=20 )
+coef(full.model,which.min(full.summary$cp))
+```
+forward method has a diffrent answer and best subset answer was better
+
+## e
+
+```{r}
+grid=10^seq(10,-2,length=100)
+x=model.matrix(y~.,data)[,-1]
+train=sample(nrow(x), nrow(x)/4)
+test=(-train)
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid, thresh = 1e-12)
+cv.out=cv.glmnet(x[train ,],y[train],alpha=1)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+print(bestlam)
+lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
+mean((lasso.pred-y[test])^2)
+out=glmnet(x,y,alpha=1,lambda = grid)
+lasso.output = predict(out,s=bestlam,newx = x)
+predict(out,s=bestlam,type = "coefficients")
+mean((lasso.output-y)^2)
+mean((predict(lm(data,formula = y~.,subset = train),newdata = data[test,])-y)^2)
+```
+there is an improvment in test error and coef of 5 and other powers are zero witch is a good improvment
+## f
+### f_lasso
+
+```{r}
+x=2*(1:n)-n/2
+y = 100 - 1e-10*x^7 + eps
+data$y = y
+
+x=model.matrix(y~.,data)[,-1]
+train=sample(nrow(x), nrow(x)/4)
+test=(-train)
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid, thresh = 1e-12)
+cv.out=cv.glmnet(x[train ,],y[train],alpha=1)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+print(bestlam)
+lasso.pred=predict(lasso.mod,s=bestlam ,newx=x[test,])
+mean((lasso.pred-y[test])^2)
+out=glmnet(x,y,alpha=1,lambda = grid)
+lasso.output = predict(out,s=bestlam,newx = x)
+predict(out,s=bestlam,type = "coefficients")
+mean((lasso.output-y)^2)
+mean((predict(lm(data,formula = y~.,subset = train),newdata = data[test,])-y)^2)
+```
+coef of power 6 and 7 and 8 are nonzero but only 7th power should be nonzero
+
+### f_bestsubset
+
+```{r}
+full.model =regsubsets(y~.,data,nvmax = 10)
+full.summary=summary(full.model)
+plot(full.model,scale= "bic")
+plot(full.summary$bic,type = "l",xlab = "features",ylab="BIC")
+points(which.min(full.summary$bic), full.summary$bic[which.min(full.summary$bic)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "adjr2")
+plot(full.summary$adjr2,type = "l",xlab = "features",ylab="adjusted R2")
+points(which.max(full.summary$adjr2), full.summary$adjr2[which.max(full.summary$adjr2)] , col="red",cex=2,pch=20 )
+plot(full.model,scale= "Cp")
+plot(full.summary$cp,type = "l",xlab = "features",ylab="Cp")
+points(which.min(full.summary$cp), full.summary$cp[which.min(full.summary$cp)] , col="red",cex=2,pch=20 )
+coef(full.model,which.min(full.summary$cp))
+```
+only 7th coef is nonzero and it's a very good choice
+

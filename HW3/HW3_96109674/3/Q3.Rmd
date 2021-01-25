@@ -1,0 +1,124 @@
+---
+title: "HW3-Q3"
+author: "Alireza Darvishi-96109674"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+<font face="Chalkboard">
+a)
+</font>
+
+<font face="Times New Roman">
+loading data and libreries
+</font>
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(broom)
+read_xls(path = "../edu.xls") -> edu
+
+```
+<font face="Chalkboard">
+b)
+</font>
+
+<font face="Times New Roman">
+dummy variables: female , black , hispanic , dadcol , momcoll , ownhome , urban , incomehi
+</font>
+
+<font face="Chalkboard">
+c)
+</font>
+
+```{r}
+ggplot(data=edu,aes(x=bytest,y=ed,color=as.factor(black)))+geom_point()+
+  geom_smooth(method = "lm",aes(group=black))
+```
+
+<font face="Chalkboard">
+d)
+</font>
+
+```{r}
+ggplot(data=edu,aes(x=bytest,y=ed,color=as.factor(female)))+
+  geom_point()+geom_smooth(method = "lm")
+```
+<font face="Chalkboard">
+e)
+</font>
+
+```{r}
+ggplot(data=edu,aes(x=bytest,y=ed,colour=as.factor(momcoll):as.factor(dadcoll)))+
+  geom_point()+geom_smooth(method = "lm")
+```
+<font face="Chalkboard">
+f)
+</font>
+
+```{r}
+edu$female=as.factor(edu$female)
+edu$black=as.factor(edu$black)
+edu$hispanic=as.factor(edu$hispanic)
+edu$dadcoll=as.factor(edu$dadcoll)
+edu$momcoll=as.factor(edu$momcoll)
+edu$ownhome=as.factor(edu$ownhome)
+edu$urban=as.factor(edu$urban)
+edu$incomehi=as.factor(edu$incomehi)
+```
+
+<font face="Chalkboard">
+g)
+</font>
+
+```{r}
+linear_model=lm(data=edu , formula = ed ~ .)
+summary(linear_model)
+```
+<font face="Chalkboard">
+h)
+</font>
+
+<font face="Times New Roman">
+female1: females had more education years
+black1: black peaple had more education years
+hispanic1: hispanic peaple had more education years
+bytest: a pearson with more score in Base Year Composite Test had more education
+dadcoll1: a person whose his father went to college had more education years
+momcoll1: a person whose his father went to college had more education years
+ownhome1: a pearson with home has more education years
+other coefs are like those mentioned above
+it's logical that momcoll1 , dadcoll1 and incomehi1 coefs are positive. also bytest is positive.
+
+</font>
+
+<font face="Chalkboard">
+i)
+</font>
+```{r}
+residuals_data=cbind(abs_resud=abs(linear_model$residuals),edu)
+res_model=lm(data=residuals_data , formula = abs_resud~ed)
+ggplot(data=residuals_data,aes(x=ed,y=abs_resud))+geom_point()+geom_smooth(method = "lm")
+plot(res_model)
+```
+<font face="Times New Roman">
+absolute of residuals are correlated with ed and so model is not valid.
+
+</font>
+
+<font face="Chalkboard">
+j)
+</font>
+```{r}
+edu$dist_less_than_10=as.factor(edu$dist<=1)
+edu %>% group_by(dist_less_than_10) %>% nest() %>% mutate ( lm_fit = map ( data , ~lm( data=. ,formula = ed~.) ), results = map(lm_fit, glance) ) %>% unnest(results) %>%  .$lm_fit
+
+
+```
+

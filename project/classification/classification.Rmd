@@ -1,0 +1,169 @@
+---
+title: "Classification"
+subtitle: "classification"
+author: "Alireza Darvishi"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: null
+---
+
+
+# Loading data and packages
+```{r loading data and packages, message=FALSE, warning=FALSE}
+library(readxl)
+library(tidyverse)
+library(glmnet)
+library(verification)
+library(MASS)
+data <- read_excel("default of credit card clients.xls")
+head(data)
+```
+# Data description
+This research employed a binary variable, default payment (Yes = 1, No = 0), as the response variable. This study used the following 23 variables as explanatory variables
+
+Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit.
+
+Gender (1 = male; 2 = female). 
+
+Education (0 = unknown; 1 = graduate school; 2 = university; 3 = high school; 4 = others). 
+
+Marital status (0 = unknown; 1 = married; 2 = single; 3 = others). 
+
+Age (year).
+
+PAY_1 - PAY_6 : History of past payment. We tracked the past monthly payment records (from April to September, 2005) as follows: PAY_1 = the repayment status in September, 2005; PAY_2 = the repayment status in August, 2005; . . .;PAY_6 = the repayment status in April, 2005. The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months; . . .; 8 = payment delay for eight months; 9 = payment delay for nine months and above. 
+
+Amount of bill statement (NT dollar). BIL_AMT1 = amount of bill statement in September, 2005; BIL_AMT2 = amount of bill statement in August, 2005; . . .; BIL_AMT6 = amount of bill statement in April, 2005. 
+
+Amount of previous payment (NT dollar). PAY_AMT1 = amount paid in September, 2005; PAY_AMT2 = amount paid in August, 2005; . . .;PAY_AMT6 = amount paid in April, 2005. 
+
+## Preprocess and data summary
+
+```{r preprocces and data summary, warning=FALSE}
+data$SEX = as.factor(data$SEX)
+data$EDUCATION = as.factor(data$EDUCATION)
+data$MARRIAGE = as.factor(data$MARRIAGE)
+data$def_pymnt_nxt_mnth = as.factor(data$def_pymnt_nxt_mnth)
+summary(data[,-1])
+```
+# Visualization
+
+```{r visualization, warning=FALSE}
+ggplot(data) +
+  geom_histogram(
+    aes(x=AGE,fill = SEX),
+    bins = 30)
+ggplot(data) +
+  geom_boxplot(
+    aes(y=LIMIT_BAL,
+        color = MARRIAGE , x = MARRIAGE))
+ggplot(data) +
+  geom_point(
+    aes(color = SEX ,
+        y=LIMIT_BAL,
+        x = (BILL_AMT1+BILL_AMT2+BILL_AMT3+
+               BILL_AMT4+BILL_AMT5+BILL_AMT6)))
+ggplot(data) +
+  geom_boxplot(
+    aes(y=LIMIT_BAL,
+        color = def_pymnt_nxt_mnth ,
+        x = def_pymnt_nxt_mnth))
+ggplot(data) +
+  geom_histogram(
+    aes(fill = def_pymnt_nxt_mnth ,
+        x = LIMIT_BAL),bins=25)
+```
+
+# Data manipulation
+
+```{r corelation}
+data = na.omit(data)
+cor(data[,7:12])
+cor(data[,13:18])
+cor(data[,19:24])
+```
+
+As we can see PAYs are correlated with each other and BILLs are correlated with each other as well.
+
+So we summarise these data to lower dimension using linear transformations below.
+
+But PAY_AMTs are not correlated so we keep theme and regularize it with credit limit value. 
+
+```{r data manipulation}
+data %>% mutate(PAY_AMT_SUM=
+                  PAY_1*PAY_AMT1+PAY_2*PAY_AMT2+
+                  PAY_3*PAY_AMT3+PAY_4*PAY_AMT4+
+                  PAY_5*PAY_AMT5+PAY_6*PAY_AMT6 ,
+                REGULARIZED_BILL = 
+                  PAY_1*BILL_AMT1 +PAY_2*BILL_AMT2 +
+                  PAY_3*BILL_AMT3 +PAY_4*BILL_AMT4 +
+                  PAY_5*BILL_AMT5 +PAY_6*BILL_AMT6 ,
+                PAY_MEAN = PAY_1/6+PAY_2/6+PAY_3/6+
+                  PAY_4/6+PAY_5/6+PAY_6/6 ,
+                PAY_RATIO1 = PAY_AMT1/LIMIT_BAL ,
+                PAY_RATIO2 = PAY_AMT2/LIMIT_BAL ,
+                PAY_RATIO3 = PAY_AMT3/LIMIT_BAL ,
+                PAY_RATIO4 = PAY_AMT4/LIMIT_BAL ,
+                PAY_RATIO5 = PAY_AMT5/LIMIT_BAL ,
+                PAY_RATIO6 = PAY_AMT6/LIMIT_BAL ) %>% .[-c(7:24,1)] -> new_data
+train_idx = sample(30000,size = 0.8*30000)
+train_data = new_data[train_idx,]
+test_data = new_data[-train_idx,]
+x = model.matrix(def_pymnt_nxt_mnth~., train_data)[,-1]
+y <- ifelse(train_data$def_pymnt_nxt_mnth == 1, 1, 0)
+x.test <- model.matrix(def_pymnt_nxt_mnth ~., test_data)[,-1]
+y.test = ifelse(test_data$def_pymnt_nxt_mnth == 1, 1, 0)
+```
+# Model selection
+This data set has 15 demension so KNN is not a proper model.
+
+In this section we fit Logistic Regression and LDA:
+
+## Logistic Regression with lasso:
+```{r LR with Lasso, warning=FALSE}
+cv.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial")
+plot(cv.lasso)
+LR.Lasso_model <- glmnet(x, y, alpha = 1, family = "binomial",
+                lambda = cv.lasso$lambda.min)
+pred.lr = predict(LR.Lasso_model,newx = x.test,type = "response")
+roc.plot(y.test,pred.lr)
+thresh = 0.35
+table(pred.lr>thresh,y.test)
+mean((pred.lr>thresh) == y.test)
+#roc_data = roc.glmnet(model,newx = x.test,newy = y.test, family = "binomial")
+#ggplot(roc_data) + geom_line(aes(x= FPR,y=TPR)) + geom_abline(slope = 1)
+```
+## Logistic Regression with ridge:
+```{r LR with Ridge, warning=FALSE}
+cv.ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial")
+plot(cv.ridge)
+LR.ridge_model <- glmnet(x, y, alpha = 0, family = "binomial",
+                lambda = cv.ridge$lambda.min)
+pred.lr = predict(LR.ridge_model,newx = x.test,type = "response")
+roc.plot(y.test,pred.lr)
+thresh = 0.35
+table(pred.lr>thresh,y.test)
+mean((pred.lr>thresh) == y.test)
+#roc_data = roc.glmnet(model,newx = x.test,newy = y.test, family = "binomial")
+#ggplot(roc_data) + geom_line(aes(x= FPR,y=TPR)) + geom_abline(slope = 1)
+```
+## LDA:
+```{r LDA, warning=FALSE}
+lda.fit = lda(data = new_data , subset = train_idx , def_pymnt_nxt_mnth~.)
+roc.plot(y.test,predict(lda.fit,newdata = test_data)$posterior[,2])
+pred.lda = predict(lda.fit,newdata = test_data)$class
+table(pred.lda,y.test)
+mean(pred.lda == y.test)
+```
+# Final results
+Comparing result of these models, Logestic reggresion with lasso is slightly better than other models.
+
+Final Coefs are reported below:
+
+```{r warning=FALSE}
+coef(LR.Lasso_model)
+```
+
+
